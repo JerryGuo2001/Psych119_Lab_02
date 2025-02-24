@@ -70,7 +70,10 @@
 
     <script>
         let startTime;
+        let lastClickTime;
         let foundDifferences = [];
+        let differenceLogs = [];
+        let mturkID = '';
         const totalDifferences = 5;
 
         const differences = [
@@ -82,7 +85,7 @@
         ];
 
         function proceedToTask() {
-            const mturkID = document.getElementById('mturkID').value.trim();
+            mturkID = document.getElementById('mturkID').value.trim();
             const errorMsg = document.getElementById('error-msg');
 
             if (mturkID === '') {
@@ -93,6 +96,7 @@
                 document.getElementById('task-container').style.display = 'block';
                 document.getElementById('user-info').textContent = `MTurk ID: ${mturkID}`;
                 startTime = new Date();
+                lastClickTime = startTime;
                 drawCanvas();
             }
         }
@@ -100,6 +104,8 @@
         function completeTask() {
             document.getElementById('task-container').style.display = 'none';
             document.getElementById('thankyou-container').style.display = 'block';
+            console.log("Difference Logs:", differenceLogs);
+            uploadData();
         }
 
         function drawCanvas() {
@@ -155,6 +161,7 @@
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
+            const currentTime = new Date();
 
             differences.forEach((diff, index) => {
                 if (!foundDifferences.includes(index)) {
@@ -164,11 +171,15 @@
                         if (Math.sqrt(dx * dx + dy * dy) <= diff.r) {
                             markDifference(canvas, diff.x, diff.y);
                             foundDifferences.push(index);
+                            logDifference(index, (currentTime - lastClickTime) / 1000);
+                            lastClickTime = currentTime;
                         }
                     } else { // Rectangle
                         if (x >= diff.x && x <= diff.x + diff.w && y >= diff.y && y <= diff.y + diff.h) {
                             markDifference(canvas, diff.x + diff.w / 2, diff.y + diff.h / 2);
                             foundDifferences.push(index);
+                            logDifference(index, (currentTime - lastClickTime) / 1000);
+                            lastClickTime = currentTime;
                         }
                     }
                 }
@@ -188,7 +199,40 @@
             ctx.stroke();
         }
 
-        // Variable that stores found differences: foundDifferences
+        function logDifference(differenceNumber, timeTaken) {
+            differenceLogs.push({
+                mturkID: mturkID,
+                differenceNumber: differenceNumber + 1,
+                timeTaken: timeTaken
+            });
+            console.log(`Difference ${differenceNumber + 1} found in ${timeTaken} seconds.`);
+        }
+
+        async function uploadData() {
+            const csvRows = ["MTurkID,DifferenceNumber,TimeTaken"];
+            differenceLogs.forEach(entry => {
+                csvRows.push(`${entry.mturkID},${entry.differenceNumber},${entry.timeTaken}`);
+            });
+
+            const csvContent = csvRows.join("\n");
+            const blob = new Blob([csvContent], { type: "text/csv" });
+            const formData = new FormData();
+            formData.append("file", blob, `mturk_${mturkID}_results.csv`);
+
+            try {
+                const response = await fetch("https://srn-wpprioi42-jerryguo2001s-projects.vercel.app/upload-csv", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
+
+                const data = await response.json();
+                console.log("Data saved at:", data.fileUrl);
+            } catch (error) {
+                console.error("Error uploading CSV:", error);
+            }
+        }
 
     </script>
 
