@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTurk Task - Welcome</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        #welcome-container {
+            max-width: 400px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="welcome-container">
+        <h1>Welcome to the Task!</h1>
+        <p>Please enter your MTurk ID to proceed.</p>
+        <input type="text" id="mturkID" placeholder="Enter your MTurk ID">
+        <div class="error" id="error-msg">Please enter a valid MTurk ID.</div>
+        <button onclick="proceedToTask()">Start Task</button>
+    </div>
+
+    <script>
+        function proceedToTask() {
+            const mturkID = document.getElementById('mturkID').value.trim();
+            const errorMsg = document.getElementById('error-msg');
+
+            if (mturkID === '') {
+                errorMsg.style.display = 'block';
+            } else {
+                errorMsg.style.display = 'none';
+                // Redirect to the next page with MTurk ID as query param
+                window.location.href = `task.html?mturkID=${encodeURIComponent(mturkID)}`;
+            }
+        }
+    </script>
+
+</body>
+</html>
