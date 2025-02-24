@@ -3,24 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTurk Task - Welcome</title>
+    <title>MTurk Task</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
             margin-top: 50px;
         }
-        #welcome-container {
-            max-width: 400px;
+        #welcome-container, #task-container, #thankyou-container {
+            max-width: 600px;
             margin: auto;
             padding: 20px;
             border: 1px solid #ccc;
             border-radius: 10px;
+            display: none;
         }
-        input[type="text"] {
-            width: 80%;
-            padding: 10px;
-            margin: 10px 0;
+        #welcome-container {
+            display: block;
+        }
+        #canvas-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        canvas {
+            border: 2px solid #000;
         }
         button {
             padding: 10px 20px;
@@ -43,7 +51,33 @@
         <button onclick="proceedToTask()">Start Task</button>
     </div>
 
+    <div id="task-container">
+        <h1>Spot the Differences</h1>
+        <p id="user-info"></p>
+        <div id="canvas-container">
+            <canvas id="canvas1" width="300" height="300"></canvas>
+            <canvas id="canvas2" width="300" height="300"></canvas>
+        </div>
+    </div>
+
+    <div id="thankyou-container">
+        <h1>Thank You!</h1>
+        <p>You have completed the task.</p>
+    </div>
+
     <script>
+        let startTime;
+        let foundDifferences = [];
+        const totalDifferences = 5;
+
+        const differences = [
+            { x: 150, y: 50, w: 50, h: 50 }, // Green/Purple Square
+            { x: 200, y: 50, w: 30, h: 30 }, // Orange Square
+            { x: 100, y: 200, r: 20 },        // Yellow Circle Canvas1
+            { x: 100, y: 220, r: 20 },        // Yellow Circle Canvas2
+            { x: 200, y: 200, r: 40 }         // Red Circle
+        ];
+
         function proceedToTask() {
             const mturkID = document.getElementById('mturkID').value.trim();
             const errorMsg = document.getElementById('error-msg');
@@ -52,10 +86,107 @@
                 errorMsg.style.display = 'block';
             } else {
                 errorMsg.style.display = 'none';
-                // Redirect to the next page with MTurk ID as query param
-                window.location.href = `task.html?mturkID=${encodeURIComponent(mturkID)}`;
+                document.getElementById('welcome-container').style.display = 'none';
+                document.getElementById('task-container').style.display = 'block';
+                document.getElementById('user-info').textContent = `MTurk ID: ${mturkID}`;
+                startTime = new Date();
+                drawCanvas();
             }
         }
+
+        function completeTask() {
+            document.getElementById('task-container').style.display = 'none';
+            document.getElementById('thankyou-container').style.display = 'block';
+        }
+
+        function drawCanvas() {
+            const canvas1 = document.getElementById('canvas1');
+            const ctx1 = canvas1.getContext('2d');
+            const canvas2 = document.getElementById('canvas2');
+            const ctx2 = canvas2.getContext('2d');
+
+            // Draw base shapes
+            ctx1.fillStyle = 'blue';
+            ctx1.fillRect(50, 50, 100, 100);
+            ctx1.fillStyle = 'red';
+            ctx1.beginPath();
+            ctx1.arc(200, 200, 40, 0, Math.PI * 2);
+            ctx1.fill();
+
+            ctx2.fillStyle = 'blue';
+            ctx2.fillRect(50, 50, 100, 100);
+            ctx2.fillStyle = 'red';
+            ctx2.beginPath();
+            ctx2.arc(200, 200, 40, 0, Math.PI * 2);
+            ctx2.fill();
+
+            // Add differences
+            ctx1.fillStyle = 'green';
+            ctx1.fillRect(150, 50, 50, 50);
+
+            ctx2.fillStyle = 'purple';
+            ctx2.fillRect(150, 50, 50, 50);
+
+            ctx1.fillStyle = 'yellow';
+            ctx1.beginPath();
+            ctx1.arc(100, 200, 20, 0, Math.PI * 2);
+            ctx1.fill();
+
+            ctx2.fillStyle = 'yellow';
+            ctx2.beginPath();
+            ctx2.arc(100, 220, 20, 0, Math.PI * 2);
+            ctx2.fill();
+
+            ctx1.fillStyle = 'orange';
+            ctx1.fillRect(200, 50, 30, 30);
+
+            ctx2.fillStyle = 'orange';
+            ctx2.fillRect(220, 50, 30, 30);
+
+            canvas1.addEventListener('click', handleCanvasClick);
+            canvas2.addEventListener('click', handleCanvasClick);
+        }
+
+        function handleCanvasClick(event) {
+            const canvas = event.target;
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            differences.forEach((diff, index) => {
+                if (!foundDifferences.includes(index)) {
+                    if (diff.r) { // Circle
+                        const dx = x - diff.x;
+                        const dy = y - diff.y;
+                        if (Math.sqrt(dx * dx + dy * dy) <= diff.r) {
+                            markDifference(canvas, diff.x, diff.y);
+                            foundDifferences.push(index);
+                        }
+                    } else { // Rectangle
+                        if (x >= diff.x && x <= diff.x + diff.w && y >= diff.y && y <= diff.y + diff.h) {
+                            markDifference(canvas, diff.x + diff.w / 2, diff.y + diff.h / 2);
+                            foundDifferences.push(index);
+                        }
+                    }
+                }
+            });
+
+            if (foundDifferences.length === totalDifferences) {
+                completeTask();
+            }
+        }
+
+        function markDifference(canvas, x, y) {
+            const ctx = canvas.getContext('2d');
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Variable that stores found differences: foundDifferences
+
     </script>
 
 </body>
