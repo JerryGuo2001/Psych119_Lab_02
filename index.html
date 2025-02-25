@@ -199,20 +199,24 @@
             const rect = event.target.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
-            const clickTime = (new Date() - lastClickTime) / 1000;
-            lastClickTime = new Date();
 
             differenceLogs.forEach(diff => {
                 const distance = Math.hypot(x - diff.x, y - diff.y);
                 if (distance <= diff.radius && !diff.found) {
                     diff.found = true; // Mark as found to prevent duplicate clicks
                     foundDifferences.push(diff);
-                    diff.time = clickTime;
+                    diff.time = ((new Date()) - lastClickTime) / 1000;
+                    lastClickTime = new Date();
                     ctx.strokeStyle = 'black';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.arc(diff.x, diff.y, diff.radius + 5, 0, Math.PI * 2);
                     ctx.stroke();
+
+                    // For the first found difference, calculate time from start
+                    if (foundDifferences.length === 1) {
+                        diff.time = ((new Date()) - startTime) / 1000;
+                    }
                 }
             });
 
