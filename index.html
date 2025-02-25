@@ -10,7 +10,7 @@
             text-align: center;
             margin-top: 50px;
         }
-        #welcome-container, #task-container, #thankyou-container {
+        #welcome-container, #demographics-container, #instruction-container, #task-container, #thankyou-container {
             max-width: 600px;
             margin: auto;
             padding: 20px;
@@ -49,6 +49,40 @@
         <input type="text" id="mturkID" placeholder="Enter your MTurk ID">
         <div class="error" id="error-msg">Please enter a valid MTurk ID.</div>
         <br><br><br>
+        <button onclick="proceedToDemographics()">Next</button>
+    </div>
+
+    <div id="demographics-container">
+        <h1>Demographics</h1>
+        <label for="age">Age:</label>
+        <input type="number" id="age" placeholder="Enter your age"><br><br>
+
+        <label for="gender">Gender:</label>
+        <select id="gender">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="non-binary">Non-binary</option>
+            <option value="prefer-not-to-say">Prefer not to say</option>
+            <option value="other">Other</option>
+        </select><br><br>
+
+        <label for="degree">Highest Degree Achieved:</label>
+        <select id="degree">
+            <option value="high-school">High School</option>
+            <option value="associate">Associate's Degree</option>
+            <option value="bachelor">Bachelor's Degree</option>
+            <option value="master">Master's Degree</option>
+            <option value="phd">PhD</option>
+            <option value="other">Other</option>
+        </select><br><br>
+
+        <button onclick="proceedToInstructions()">Next</button>
+    </div>
+
+    <div id="instruction-container">
+        <h1>Instructions</h1>
+        <p>In this task, you will see two images side by side. One is the original image, and the other has some differences. Your goal is to spot and click on the differences as quickly as possible.</p>
+        <p>There will be 5 differences in each pair. Once you find all the differences or time runs out, you will proceed to the next question.</p>
         <button onclick="proceedToTask()">Start Task</button>
     </div>
 
@@ -67,28 +101,55 @@
         <p>You have completed the task.</p>
     </div>
 
+
     <script>
         let startTime;
         let lastClickTime;
         let foundDifferences = [];
         let differenceLogs = [];
         let mturkID = '';
+        let userAge = '';
+        let userGender = '';
+        let userDegree = '';
         let questionNumber = 1;
         const totalDifferences = 5;
         const totalQuestions = 5;
         let questionTimeout;
-
+    
+        function proceedToDemographics() {
+            mturkID = document.getElementById('mturkID').value.trim();
+            if (!mturkID) {
+                document.getElementById('error-msg').style.display = 'block';
+                return;
+            }
+            document.getElementById('welcome-container').style.display = 'none';
+            document.getElementById('demographics-container').style.display = 'block';
+        }
+    
+        function proceedToInstructions() {
+            userAge = document.getElementById('age').value;
+            userGender = document.getElementById('gender').value;
+            userDegree = document.getElementById('degree').value;
+    
+            if (!userAge || userAge <= 0) {
+                alert('Please enter a valid age.');
+                return;
+            }
+    
+            document.getElementById('demographics-container').style.display = 'none';
+            document.getElementById('instruction-container').style.display = 'block';
+        }
+    
         const shapes = ['circle', 'square', 'triangle'];
         const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
-
+    
         function proceedToTask() {
-            mturkID = document.getElementById('mturkID').value.trim() || 'NA';
-            document.getElementById('welcome-container').style.display = 'none';
+            document.getElementById('instruction-container').style.display = 'none';
             document.getElementById('task-container').style.display = 'block';
-            document.getElementById('user-info').textContent = `MTurk ID: ${mturkID}`;
+            document.getElementById('user-info').textContent = `MTurk ID: ${mturkID} | Age: ${userAge} | Gender: ${userGender} | Degree: ${userDegree}`;
             startQuestion();
         }
-
+    
         function startQuestion() {
             foundDifferences = [];
             startTime = new Date();
@@ -96,18 +157,18 @@
             drawCanvas();
             questionTimeout = setTimeout(() => nextQuestion(), 30000);
         }
-
+    
         function drawCanvas() {
             const canvas1 = document.getElementById('canvas1');
             const ctx1 = canvas1.getContext('2d');
             const canvas2 = document.getElementById('canvas2');
             const ctx2 = canvas2.getContext('2d');
-
+    
             ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
             ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
-
+    
             const objects = [];
-
+    
             // Draw 10 non-overlapping objects on the right canvas (original)
             while (objects.length < 10) {
                 const shape = shapes[Math.floor(Math.random() * shapes.length)];
@@ -115,12 +176,12 @@
                 const size = Math.floor(Math.random() * 31) + 20; // Size range from 20 to 50
                 let x, y;
                 let overlap = false;
-
+    
                 do {
                     overlap = false;
                     x = Math.random() * (canvas2.width - size);
                     y = Math.random() * (canvas2.height - size);
-
+    
                     for (let obj of objects) {
                         const dx = obj.x - x;
                         const dy = obj.y - y;
@@ -131,11 +192,11 @@
                         }
                     }
                 } while (overlap);
-
+    
                 objects.push({ shape, color, size, x, y });
                 drawShape(ctx2, shape, color, x, y, size); // Right canvas (original)
             }
-
+    
             // Copy objects to left canvas and alter 5 of them
             const modifiedIndices = [];
             while (modifiedIndices.length < totalDifferences) {
@@ -143,15 +204,18 @@
                 if (!modifiedIndices.includes(randIndex)) {
                     modifiedIndices.push(randIndex);
                     const obj = objects[randIndex];
-
+    
                     let modifiedColor = colors[Math.floor(Math.random() * colors.length)];
                     let modifiedShape = shapes[Math.floor(Math.random() * shapes.length)];
                     let modifiedSize = Math.floor(Math.random() * 31) + 20; // Size range from 20 to 50
-
+    
                     drawShape(ctx1, modifiedShape, modifiedColor, obj.x, obj.y, modifiedSize);
-
+    
                     differenceLogs.push({
                         mturkID: mturkID,
+                        userAge: userAge,
+                        userGender: userGender,
+                        userDegree: userDegree,
                         questionNumber: questionNumber,
                         shape: obj.shape,
                         color: obj.color,
@@ -163,22 +227,22 @@
                         y: obj.y + modifiedSize / 2,
                         radius: Math.max(modifiedSize / 2, 10),
                         time: 0,
-                        found: false // Track if difference is already found
+                        found: false
                     });
                 }
             }
-
+    
             // Draw remaining objects on left canvas
             objects.forEach((obj, index) => {
                 if (!modifiedIndices.includes(index)) {
                     drawShape(ctx1, obj.shape, obj.color, obj.x, obj.y, obj.size);
                 }
             });
-
+    
             canvas1.onclick = (e) => handleCanvasClick(e, ctx1);
             canvas2.onclick = (e) => handleCanvasClick(e, ctx2);
         }
-
+    
         function drawShape(ctx, shape, color, x, y, size) {
             ctx.fillStyle = color;
             ctx.beginPath();
@@ -194,16 +258,16 @@
             }
             ctx.fill();
         }
-
+    
         function handleCanvasClick(event, ctx) {
             const rect = event.target.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
-
+    
             differenceLogs.forEach(diff => {
                 const distance = Math.hypot(x - diff.x, y - diff.y);
                 if (distance <= diff.radius && !diff.found) {
-                    diff.found = true; // Mark as found to prevent duplicate clicks
+                    diff.found = true;
                     foundDifferences.push(diff);
                     diff.time = ((new Date()) - lastClickTime) / 1000;
                     lastClickTime = new Date();
@@ -212,20 +276,19 @@
                     ctx.beginPath();
                     ctx.arc(diff.x, diff.y, diff.radius + 5, 0, Math.PI * 2);
                     ctx.stroke();
-
-                    // For the first found difference, calculate time from start
+    
                     if (foundDifferences.length === 1) {
                         diff.time = ((new Date()) - startTime) / 1000;
                     }
                 }
             });
-
+    
             if (foundDifferences.length === totalDifferences) {
                 clearTimeout(questionTimeout);
                 document.getElementById('next-question-btn').style.display = 'block';
             }
         }
-
+    
         function nextQuestion() {
             document.getElementById('next-question-btn').style.display = 'none';
             if (questionNumber < totalQuestions) {
@@ -235,19 +298,22 @@
                 completeTask();
             }
         }
-
+    
         function completeTask() {
             document.getElementById('task-container').style.display = 'none';
             document.getElementById('thankyou-container').style.display = 'block';
             uploadData();
         }
-
+    
         async function uploadData() {
-            const csvRows = ["MTurkID,QuestionNumber,Shape,Color,Size,ModifiedShape,ModifiedColor,ModifiedSize,Time"];
-
+            const csvRows = ["MTurkID,Age,Gender,Degree,QuestionNumber,Shape,Color,Size,ModifiedShape,ModifiedColor,ModifiedSize,Time"];
+    
             differenceLogs.forEach(entry => {
                 csvRows.push([
                     entry.mturkID,
+                    entry.userAge,
+                    entry.userGender,
+                    entry.userDegree,
                     entry.questionNumber,
                     entry.shape,
                     entry.color,
@@ -258,20 +324,20 @@
                     entry.time
                 ].join(","));
             });
-
+    
             const csvContent = csvRows.join("\n");
             const blob = new Blob([csvContent], { type: "text/csv" });
             const formData = new FormData();
             formData.append("file", blob, `mturk_${mturkID}_results.csv`);
-
+    
             try {
                 const response = await fetch("https://srn-wpprioi42-jerryguo2001s-projects.vercel.app/upload-csv", {
                     method: "POST",
                     body: formData
                 });
-
+    
                 if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
-
+    
                 const data = await response.json();
                 console.log("Data saved at:", data.fileUrl);
             } catch (error) {
@@ -279,6 +345,7 @@
             }
         }
     </script>
+    
 
 </body>
 </html>
