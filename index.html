@@ -48,9 +48,7 @@
         <p>Please enter your MTurk ID to proceed.</p>
         <input type="text" id="mturkID" placeholder="Enter your MTurk ID">
         <div class="error" id="error-msg">Please enter a valid MTurk ID.</div>
-        <br>
-        <br>
-        <br>
+        <br><br><br>
         <button onclick="proceedToTask()">Start Task</button>
     </div>
 
@@ -61,6 +59,7 @@
             <canvas id="canvas1" width="300" height="300"></canvas>
             <canvas id="canvas2" width="300" height="300"></canvas>
         </div>
+        <button id="next-question-btn" onclick="nextQuestion()" style="display: none; margin-top: 20px;">Next Question</button>
     </div>
 
     <div id="thankyou-container">
@@ -74,38 +73,28 @@
         let foundDifferences = [];
         let differenceLogs = [];
         let mturkID = '';
+        let questionNumber = 1;
         const totalDifferences = 5;
+        const totalQuestions = 5;
+        let questionTimeout;
 
-        const differences = [
-            { x: 150, y: 50, w: 50, h: 50 }, // Green/Purple Square
-            { x: 200, y: 50, w: 30, h: 30 }, // Orange Square
-            { x: 100, y: 200, r: 20 },        // Yellow Circle Canvas1
-            { x: 100, y: 220, r: 20 },        // Yellow Circle Canvas2
-            { x: 200, y: 200, r: 40 }         // Red Circle
-        ];
+        const shapes = ['circle', 'square', 'triangle'];
+        const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
 
         function proceedToTask() {
-            mturkID = document.getElementById('mturkID').value.trim();
-            const errorMsg = document.getElementById('error-msg');
-
-            if (mturkID === '') {
-                errorMsg.style.display = 'block';
-            } else {
-                errorMsg.style.display = 'none';
-                document.getElementById('welcome-container').style.display = 'none';
-                document.getElementById('task-container').style.display = 'block';
-                document.getElementById('user-info').textContent = `MTurk ID: ${mturkID}`;
-                startTime = new Date();
-                lastClickTime = startTime;
-                drawCanvas();
-            }
+            mturkID = document.getElementById('mturkID').value.trim() || 'NA';
+            document.getElementById('welcome-container').style.display = 'none';
+            document.getElementById('task-container').style.display = 'block';
+            document.getElementById('user-info').textContent = `MTurk ID: ${mturkID}`;
+            startQuestion();
         }
 
-        function completeTask() {
-            document.getElementById('task-container').style.display = 'none';
-            document.getElementById('thankyou-container').style.display = 'block';
-            console.log("Difference Logs:", differenceLogs);
-            uploadData();
+        function startQuestion() {
+            foundDifferences = [];
+            startTime = new Date();
+            lastClickTime = startTime;
+            drawCanvas();
+            questionTimeout = setTimeout(() => nextQuestion(), 30000);
         }
 
         function drawCanvas() {
@@ -114,104 +103,156 @@
             const canvas2 = document.getElementById('canvas2');
             const ctx2 = canvas2.getContext('2d');
 
-            // Draw base shapes
-            ctx1.fillStyle = 'blue';
-            ctx1.fillRect(50, 50, 100, 100);
-            ctx1.fillStyle = 'red';
-            ctx1.beginPath();
-            ctx1.arc(200, 200, 40, 0, Math.PI * 2);
-            ctx1.fill();
+            ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
+            ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
 
-            ctx2.fillStyle = 'blue';
-            ctx2.fillRect(50, 50, 100, 100);
-            ctx2.fillStyle = 'red';
-            ctx2.beginPath();
-            ctx2.arc(200, 200, 40, 0, Math.PI * 2);
-            ctx2.fill();
+            const objects = [];
 
-            // Add differences
-            ctx1.fillStyle = 'green';
-            ctx1.fillRect(150, 50, 50, 50);
+            // Draw 10 non-overlapping objects on the right canvas (original)
+            while (objects.length < 10) {
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const size = Math.floor(Math.random() * 31) + 20; // Size range from 20 to 50
+                let x, y;
+                let overlap = false;
 
-            ctx2.fillStyle = 'purple';
-            ctx2.fillRect(150, 50, 50, 50);
+                do {
+                    overlap = false;
+                    x = Math.random() * (canvas2.width - size);
+                    y = Math.random() * (canvas2.height - size);
 
-            ctx1.fillStyle = 'yellow';
-            ctx1.beginPath();
-            ctx1.arc(100, 200, 20, 0, Math.PI * 2);
-            ctx1.fill();
-
-            ctx2.fillStyle = 'yellow';
-            ctx2.beginPath();
-            ctx2.arc(100, 220, 20, 0, Math.PI * 2);
-            ctx2.fill();
-
-            ctx1.fillStyle = 'orange';
-            ctx1.fillRect(200, 50, 30, 30);
-
-            ctx2.fillStyle = 'orange';
-            ctx2.fillRect(220, 50, 30, 30);
-
-            canvas1.addEventListener('click', handleCanvasClick);
-            canvas2.addEventListener('click', handleCanvasClick);
-        }
-
-        function handleCanvasClick(event) {
-            const canvas = event.target;
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            const currentTime = new Date();
-
-            differences.forEach((diff, index) => {
-                if (!foundDifferences.includes(index)) {
-                    if (diff.r) { // Circle
-                        const dx = x - diff.x;
-                        const dy = y - diff.y;
-                        if (Math.sqrt(dx * dx + dy * dy) <= diff.r) {
-                            markDifference(canvas, diff.x, diff.y);
-                            foundDifferences.push(index);
-                            logDifference(index, (currentTime - lastClickTime) / 1000);
-                            lastClickTime = currentTime;
-                        }
-                    } else { // Rectangle
-                        if (x >= diff.x && x <= diff.x + diff.w && y >= diff.y && y <= diff.y + diff.h) {
-                            markDifference(canvas, diff.x + diff.w / 2, diff.y + diff.h / 2);
-                            foundDifferences.push(index);
-                            logDifference(index, (currentTime - lastClickTime) / 1000);
-                            lastClickTime = currentTime;
+                    for (let obj of objects) {
+                        const dx = obj.x - x;
+                        const dy = obj.y - y;
+                        const distance = Math.hypot(dx, dy);
+                        if (distance < (obj.size / 2 + size / 2 + 5)) { // 5px padding
+                            overlap = true;
+                            break;
                         }
                     }
+                } while (overlap);
+
+                objects.push({ shape, color, size, x, y });
+                drawShape(ctx2, shape, color, x, y, size); // Right canvas (original)
+            }
+
+            // Copy objects to left canvas and alter 5 of them
+            const modifiedIndices = [];
+            while (modifiedIndices.length < totalDifferences) {
+                const randIndex = Math.floor(Math.random() * 10);
+                if (!modifiedIndices.includes(randIndex)) {
+                    modifiedIndices.push(randIndex);
+                    const obj = objects[randIndex];
+
+                    let modifiedColor = colors[Math.floor(Math.random() * colors.length)];
+                    let modifiedShape = shapes[Math.floor(Math.random() * shapes.length)];
+                    let modifiedSize = Math.floor(Math.random() * 31) + 20; // Size range from 20 to 50
+
+                    drawShape(ctx1, modifiedShape, modifiedColor, obj.x, obj.y, modifiedSize);
+
+                    differenceLogs.push({
+                        mturkID: mturkID,
+                        questionNumber: questionNumber,
+                        shape: obj.shape,
+                        color: obj.color,
+                        size: obj.size,
+                        modifiedShape: modifiedShape,
+                        modifiedColor: modifiedColor,
+                        modifiedSize: modifiedSize,
+                        x: obj.x + modifiedSize / 2,
+                        y: obj.y + modifiedSize / 2,
+                        radius: Math.max(modifiedSize / 2, 10),
+                        time: 0,
+                        found: false // Track if difference is already found
+                    });
+                }
+            }
+
+            // Draw remaining objects on left canvas
+            objects.forEach((obj, index) => {
+                if (!modifiedIndices.includes(index)) {
+                    drawShape(ctx1, obj.shape, obj.color, obj.x, obj.y, obj.size);
+                }
+            });
+
+            canvas1.onclick = (e) => handleCanvasClick(e, ctx1);
+            canvas2.onclick = (e) => handleCanvasClick(e, ctx2);
+        }
+
+        function drawShape(ctx, shape, color, x, y, size) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            if (shape === 'circle') {
+                ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+            } else if (shape === 'square') {
+                ctx.fillRect(x, y, size, size);
+            } else if (shape === 'triangle') {
+                ctx.moveTo(x + size / 2, y);
+                ctx.lineTo(x, y + size);
+                ctx.lineTo(x + size, y + size);
+                ctx.closePath();
+            }
+            ctx.fill();
+        }
+
+        function handleCanvasClick(event, ctx) {
+            const rect = event.target.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            const clickTime = (new Date() - lastClickTime) / 1000;
+            lastClickTime = new Date();
+
+            differenceLogs.forEach(diff => {
+                const distance = Math.hypot(x - diff.x, y - diff.y);
+                if (distance <= diff.radius && !diff.found) {
+                    diff.found = true; // Mark as found to prevent duplicate clicks
+                    foundDifferences.push(diff);
+                    diff.time = clickTime;
+                    ctx.strokeStyle = 'black';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(diff.x, diff.y, diff.radius + 5, 0, Math.PI * 2);
+                    ctx.stroke();
                 }
             });
 
             if (foundDifferences.length === totalDifferences) {
+                clearTimeout(questionTimeout);
+                document.getElementById('next-question-btn').style.display = 'block';
+            }
+        }
+
+        function nextQuestion() {
+            document.getElementById('next-question-btn').style.display = 'none';
+            if (questionNumber < totalQuestions) {
+                questionNumber++;
+                startQuestion();
+            } else {
                 completeTask();
             }
         }
 
-        function markDifference(canvas, x, y) {
-            const ctx = canvas.getContext('2d');
-            ctx.strokeStyle = 'red';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(x, y, 15, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-
-        function logDifference(differenceNumber, timeTaken) {
-            differenceLogs.push({
-                mturkID: mturkID,
-                differenceNumber: differenceNumber + 1,
-                timeTaken: timeTaken
-            });
-            console.log(`Difference ${differenceNumber + 1} found in ${timeTaken} seconds.`);
+        function completeTask() {
+            document.getElementById('task-container').style.display = 'none';
+            document.getElementById('thankyou-container').style.display = 'block';
+            uploadData();
         }
 
         async function uploadData() {
-            const csvRows = ["MTurkID,DifferenceNumber,TimeTaken"];
+            const csvRows = ["MTurkID,QuestionNumber,Shape,Color,Size,ModifiedShape,ModifiedColor,ModifiedSize,Time"];
+
             differenceLogs.forEach(entry => {
-                csvRows.push(`${entry.mturkID},${entry.differenceNumber},${entry.timeTaken}`);
+                csvRows.push([
+                    entry.mturkID,
+                    entry.questionNumber,
+                    entry.shape,
+                    entry.color,
+                    entry.size,
+                    entry.modifiedShape,
+                    entry.modifiedColor,
+                    entry.modifiedSize,
+                    entry.time
+                ].join(","));
             });
 
             const csvContent = csvRows.join("\n");
@@ -233,7 +274,6 @@
                 console.error("Error uploading CSV:", error);
             }
         }
-
     </script>
 
 </body>
