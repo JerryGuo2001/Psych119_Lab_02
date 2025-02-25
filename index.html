@@ -45,9 +45,9 @@
 
     <div id="welcome-container">
         <h1>Welcome to the Task!</h1>
-        <p>Please enter your MTurk ID to proceed.</p>
+        <p>Please enter your ID to proceed.</p>
         <input type="text" id="mturkID" placeholder="Enter your MTurk ID">
-        <div class="error" id="error-msg">Please enter a valid MTurk ID.</div>
+        <div class="error" id="error-msg">Please enter a valid ID.</div>
         <br><br><br>
         <button onclick="proceedToDemographics()">Next</button>
     </div>
@@ -83,6 +83,7 @@
         <h1>Instructions</h1>
         <p>In this task, you will see two images side by side. One is the original image, and the other has some differences. Your goal is to spot and click on the differences as quickly as possible.</p>
         <p>There will be 5 differences in each pair. Once you find all the differences or time runs out, you will proceed to the next question.</p>
+        <p>You will have 30 second per question to find the difference. You will proceed to the next question after you click on the total 5 difference on the image or the 30 second question Timeout</p>
         <button onclick="proceedToTask()">Start Task</button>
     </div>
 
